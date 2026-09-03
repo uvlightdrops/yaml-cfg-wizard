@@ -1,0 +1,14 @@
+world:
+  width: 2560
+  height: 2560
+  tick_rate_ms: 200
+  terrain:
+    grass_ratio: 0.62
+    forest_ratio: 0.18
+    water_ratio: 0.08
+    river_width: 3
+  settlements:
+    count: 4
+    min_distance: 80
+  agents:
+    max_per_node: 1000

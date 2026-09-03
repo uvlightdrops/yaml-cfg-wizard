@@ -1,0 +1,12 @@
+node:
+  id: ia3-dev-1
+  role: local
+
+ai:
+  ollama:
+    enabled: false
+
+ui:
+  polling:
+    compact_interval_ms: 1500
+    full_state_interval_ms: 6000

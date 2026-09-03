@@ -1,0 +1,9 @@
+ai:
+  ollama:
+    enabled: true
+    base_url: http://localhost:11434
+    model: llama3.2:latest
+    timeout_ms: 8000
+  agents:
+    decision_interval_ticks: 10
+    grpc_timeout_ms: 3000

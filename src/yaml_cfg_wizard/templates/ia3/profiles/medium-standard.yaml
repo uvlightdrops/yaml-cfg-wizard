@@ -1,0 +1,6 @@
+world:
+  width: 1024
+  height: 1024
+  tick_rate_ms: 150
+  agents:
+    max_per_node: 200

@@ -1,0 +1,10 @@
+world:
+  width: 512
+  height: 512
+  tick_rate_ms: 50
+  agents:
+    max_per_node: 50
+
+ai:
+  ollama:
+    enabled: false

@@ -1,0 +1,11 @@
+world:
+  width: 2560
+  height: 2560
+  tick_rate_ms: 50
+  agents:
+    max_per_node: 5000
+
+ui:
+  polling:
+    compact_interval_ms: 250
+    full_state_interval_ms: 1000
