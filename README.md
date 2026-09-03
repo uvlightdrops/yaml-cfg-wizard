@@ -20,7 +20,7 @@ yaml_cfg_wizard/
 ├── README.md
 ├── pyproject.toml
 ├── schema/
-│   └── config.schema.json
+│   └── config.schema.yaml
 ├── defaults/
 │   └── app.yaml
 ├── profiles/
@@ -92,7 +92,7 @@ yaml-cfg resolve \
 ### Validate a config file
 
 ```bash
-yaml-cfg validate examples/defaults/app.yaml schema/config.schema.json
+yaml-cfg validate examples/defaults/app.yaml schema/config.schema.yaml
 ```
 
 ### List profiles
@@ -153,7 +153,7 @@ config/
 ├── runtime/
 │   └── runtime.yaml
 ├── schema/
-│   └── ia3-config.schema.json
+│   └── ia3-config.schema.yaml
 └── README.md
 ```
 

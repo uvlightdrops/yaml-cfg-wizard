@@ -5,9 +5,7 @@ from typing import Optional
 
 import typer
 import yaml
-from jsonschema import Draft7Validator
-
-from .core import ConfigResolver, load_yaml_file
+from .core import ConfigResolver, load_yaml_file, validate_schema
 from .scaffold import available_templates, scaffold_template
 
 app = typer.Typer(help="YAML config merge and validation wizard")
@@ -96,16 +94,15 @@ def resolve_config(
 @app.command("validate")
 def validate_config(
     config: str = typer.Argument(..., help="Path to YAML config file"),
-    schema: str = typer.Argument(..., help="Path to JSON schema file"),
+    schema: str = typer.Argument(..., help="Path to schema file in YAML or JSON format"),
 ) -> None:
     data = load_yaml_file(config)
-    schema_data = yaml.safe_load(Path(schema).read_text(encoding="utf-8"))
-    validator = Draft7Validator(schema_data)
-    errors = sorted(validator.iter_errors(data), key=lambda e: list(e.path))
-    if errors:
-        for error in errors:
-            typer.echo(f"- {list(error.path) or '<root>'}: {error.message}", err=True)
-        raise typer.Exit(code=1)
+    try:
+        validate_schema(data, schema)
+    except ValueError as exc:
+        for line in str(exc).splitlines()[1:]:
+            typer.echo(f"- {line}", err=True)
+        raise typer.Exit(code=1) from exc
     typer.echo("Configuration is valid.")
 
 

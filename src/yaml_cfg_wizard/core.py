@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
 import yaml
+from jsonschema import Draft7Validator
 
 
 def deep_merge(base: Any, override: Any) -> Any:
@@ -52,6 +53,21 @@ def load_directory_yaml(directory: str | os.PathLike[str]) -> Dict[str, Any]:
     return merged
 
 
+def validate_schema(data: Dict[str, Any], schema_file: str | os.PathLike[str]) -> None:
+    schema_path = Path(schema_file)
+    schema_data = yaml.safe_load(schema_path.read_text(encoding="utf-8"))
+    if not isinstance(schema_data, dict):
+        raise ValueError(f"Schema root must be a mapping: {schema_path}")
+    validator = Draft7Validator(schema_data)
+    errors = sorted(validator.iter_errors(data), key=lambda error: list(error.path))
+    if errors:
+        messages = [
+            f"{'.'.join(str(part) for part in error.path) or '<root>'}: {error.message}"
+            for error in errors
+        ]
+        raise ValueError("Schema validation failed:\n" + "\n".join(messages))
+
+
 def env_to_dict(prefix: str, env: Optional[dict[str, str]] = None) -> Dict[str, Any]:
     source = env or os.environ
     result: Dict[str, Any] = {}
@@ -96,6 +112,7 @@ class ConfigResolver:
         profiles_dir: str | os.PathLike[str] | None = None,
         stages_dir: str | os.PathLike[str] | None = None,
         runtime_file: str | os.PathLike[str] | None = None,
+        schema_file: str | os.PathLike[str] | None = None,
         env_prefix: str = "APP_",
         env: Optional[dict[str, str]] = None,
     ) -> None:
@@ -107,6 +124,7 @@ class ConfigResolver:
         self.profiles_dir = str(profiles_dir) if profiles_dir else None
         self.stages_dir = str(stages_dir) if stages_dir else None
         self.runtime_file = str(runtime_file) if runtime_file else None
+        self.schema_file = str(schema_file) if schema_file else None
         self.env_prefix = env_prefix
         self.env = env
 
@@ -131,7 +149,15 @@ class ConfigResolver:
 
         env_overrides = env_to_dict(self.env_prefix, self.env)
         merged = deep_merge(merged, env_overrides)
+        self.validate(merged)
         return merged
+
+    def validate(self, data: Optional[Dict[str, Any]] = None) -> None:
+        if not self.schema_file:
+            return
+
+        target = data if data is not None else self.resolve()
+        validate_schema(target, self.schema_file)
 
     def resolve_to_file(self, target_path: str | os.PathLike[str]) -> None:
         resolved = self.resolve()
