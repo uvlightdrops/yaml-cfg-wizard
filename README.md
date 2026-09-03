@@ -1,6 +1,6 @@
 # yaml_cfg_wizard
 
-A reusable YAML configuration resolver and wizard for layered config projects.
+A reusable YAML configuration resolver and optional CLI wizard for layered config projects.
 
 ## Goal
 
@@ -61,7 +61,23 @@ The resolver applies config in this order:
 
 The last layer wins.
 
+## Installation
+
+Library-only usage:
+
+```bash
+pip install yaml-cfg-wizard
+```
+
+With CLI support:
+
+```bash
+pip install "yaml-cfg-wizard[cli]"
+```
+
 ## CLI commands
+
+The `yaml-cfg` command is part of the optional `cli` extra.
 
 ### Resolve config
 
