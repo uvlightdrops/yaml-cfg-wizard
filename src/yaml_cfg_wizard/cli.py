@@ -7,6 +7,7 @@ import typer
 import yaml
 from .core import ConfigResolver, load_yaml_file, validate_schema
 from .scaffold import available_templates, scaffold_template
+from .config_cli import show_config, list_config, validate_config, show_config_paths, generate_skeleton
 
 app = typer.Typer(help="YAML config merge and validation wizard")
 
@@ -133,6 +134,79 @@ def env_show(prefix: str = typer.Option("APP_", "--prefix")) -> None:
 
     for item in matches:
         typer.echo(item)
+
+
+# Config subcommands
+config_app = typer.Typer(help="Config inspection and management")
+
+
+@config_app.command("skeleton")
+def skeleton(
+    base_schema: str = typer.Argument(..., help="Path to base schema file"),
+    output: str = typer.Option("ki.yaml", "--output", "-o", help="Output config file path"),
+    additional: Optional[list[str]] = typer.Option(None, "--schema", help="Additional schema files to merge"),
+) -> None:
+    """Generate config skeleton from schema."""
+    generate_skeleton(base_schema, output, additional)
+
+
+@config_app.command("show")
+def show(
+    key: Optional[str] = typer.Argument(None, help="Config key to show (omit to show all)"),
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """Show config value by key."""
+    try:
+        config_dict = load_yaml_file(config_file)
+        show_config(config_dict, key)
+    except FileNotFoundError:
+        typer.echo(f"❌ Config file not found: {config_file}", err=True)
+        raise typer.Exit(code=1)
+
+
+@config_app.command("list")
+def list_keys(
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """List all config keys in hierarchical view."""
+    try:
+        config_dict = load_yaml_file(config_file)
+        list_config(config_dict)
+    except FileNotFoundError:
+        typer.echo(f"❌ Config file not found: {config_file}", err=True)
+        raise typer.Exit(code=1)
+
+
+@config_app.command("verify")
+def verify(
+    config_file: str = typer.Argument(..., help="Path to config file"),
+    schema_file: str = typer.Argument(..., help="Path to schema file"),
+) -> None:
+    """Validate config against schema."""
+    try:
+        config_dict = load_yaml_file(config_file)
+        schema_dict = load_yaml_file(schema_file)
+        validate_config(config_dict, schema_dict)
+    except FileNotFoundError as e:
+        typer.echo(f"❌ File not found: {e}", err=True)
+        raise typer.Exit(code=1)
+
+
+@config_app.command("paths")
+def paths(
+    search_dir: Optional[str] = typer.Option(None, "--search-dir", "-d", help="Base directory for search paths"),
+) -> None:
+    """Show config file search paths."""
+    if search_dir:
+        search_paths = [
+            Path(search_dir) / "ki.yaml",
+            Path(search_dir) / ".ki" / "ki.yaml",
+            Path(search_dir) / ".ki.yaml",
+        ]
+    show_config_paths(search_paths if search_dir else None)
+
+
+app.add_typer(config_app, name="config")
 
 
 if __name__ == "__main__":
