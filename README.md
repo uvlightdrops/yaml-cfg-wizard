@@ -77,35 +77,74 @@ pip install "yaml-cfg-wizard[cli]"
 
 ## CLI commands
 
-The `yaml-cfg` command is part of the optional `cli` extra.
+The `yaml-cfg-wizard` command provides multiple subcommands.
 
-### Resolve config
+### resolve
+
+Merge and resolve all config layers:
 
 ```bash
-yaml-cfg resolve \
+yaml-cfg-wizard resolve \
   --defaults-dir defaults \
   --profiles-dir profiles \
   --stages-dir stages \
   --runtime-file runtime/runtime.yaml
 ```
 
-### Validate a config file
+### validate
+
+Validate a config file against a schema:
 
 ```bash
-yaml-cfg validate examples/defaults/app.yaml schema/config.schema.yaml
+yaml-cfg-wizard validate examples/defaults/app.yaml schema/config.schema.yaml
 ```
 
-### List profiles
+### list-profiles
+
+List available profiles:
 
 ```bash
-yaml-cfg list-profiles profiles
+yaml-cfg-wizard list-profiles profiles
 ```
 
-### Show relevant environment variables
+### env-show
+
+Show relevant environment variables:
 
 ```bash
-yaml-cfg env-show --prefix APP_
+yaml-cfg-wizard env-show --prefix APP_
 ```
+
+### scaffold
+
+Create config skeleton from template:
+
+```bash
+yaml-cfg-wizard scaffold ia3 /path/to/your/project/config
+```
+
+### config (NEW)
+
+Config inspection and management utilities:
+
+```bash
+# Generate config skeleton from schema
+yaml-cfg-wizard config skeleton base.schema.yaml -o ki.yaml
+
+# Show config value by key
+yaml-cfg-wizard config show llm_provider --config ki.yaml
+
+# List all config keys hierarchically
+yaml-cfg-wizard config list --config ki.yaml
+
+# Validate config against schema
+yaml-cfg-wizard config verify config.yaml schema.yaml
+
+# Show config file search paths
+yaml-cfg-wizard config paths
+```
+
+See [docs/CONFIG_CLI.md](docs/CONFIG_CLI.md) for detailed config CLI documentation.
 
 ## Python usage
 
