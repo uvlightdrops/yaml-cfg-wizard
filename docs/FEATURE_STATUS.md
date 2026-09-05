@@ -103,27 +103,45 @@ yaml-cfg-wizard config paths
 ---
 
 ### 4. Absolute Path Security Setting (Security)
-**Status:** ⏳ **NOT STARTED**
+**Status:** 🚧 **IN PROGRESS**
 
 **Customer Request:**
 > Setting für den Absolutpfad im Linux system, der nicht verlassen werden darf
 
-**What's Needed:**
-- [ ] New config option: `security.allowed_base_path`
-- [ ] Path validation on all file operations
-- [ ] Prevent directory traversal attacks
-- [ ] Add to schema and documentation
+**What Was Built:**
+- ✅ Schema extended with security section in `ki-core` (allowed_base_path, enforce_path_restriction)
+- ✅ PathValidator class in `yaml-cfg-wizard` with full path validation
+- ✅ Security helper module in `kicli-code-assist`
+- ✅ 13 comprehensive tests for path validation (all passing)
+- 🚧 Integration into file operations (in progress)
 
-**Implementation Plan:**
-1. Extend schema with security section in `ki-core`
-2. Add path validation utility in `yaml-cfg-wizard`
-3. Apply validation in all file operations
-4. Add tests for boundary conditions
+**Current Implementation:**
+- `yaml-cfg-wizard/src/yaml_cfg_wizard/path_validator.py` - Core validation logic
+  - PathValidator class with is_allowed(), validate(), make_relative()
+  - Support for optional enforcement (warn vs block)
+  - Prevents directory traversal attacks
+  - Full path normalization
+- `yaml-cfg-wizard/tests/test_path_validator.py` - 13 comprehensive tests
+- `kicli-code-assist/kicli_code_assist/security.py` - Integration helpers
 
-**Related Files:**
-- `ki-core/src/ki_core/schema/config.schema.yaml` - Add security section
-- `yaml-cfg-wizard/src/yaml_cfg_wizard/` - Add validation utilities
-- `kicli-code-assist/kicli_code_assist/` - Apply validation
+**Security Features:**
+- ✅ Absolute path restriction (no escaping allowed)
+- ✅ Directory traversal prevention
+- ✅ Relative path support within base
+- ✅ Optional enforcement (warn vs block)
+- ✅ Path normalization and resolution
+
+**Next Steps:**
+1. Integrate PathValidator into file browser operations
+2. Add validation to diff file loading
+3. Add CLI command for testing path validation
+4. Add TUI settings for security configuration
+
+**Files Involved:**
+- `ki-core/src/ki_core/schema/config.schema.yaml` - Security section added
+- `yaml-cfg-wizard/src/yaml_cfg_wizard/path_validator.py` - Core validator
+- `yaml-cfg-wizard/tests/test_path_validator.py` - Tests (13/13 passing)
+- `kicli-code-assist/kicli_code_assist/security.py` - Integration module
 
 ---
 
@@ -159,7 +177,7 @@ yaml-cfg-wizard config paths
 | Schema-based config | Deployment | ✅ Done | 5 | Fully integrated, no legacy fallbacks |
 | Chat history save | I/O | ✅ Done | 2 | Export functionality working |
 | TUI focus mgmt | GUI | 🚧 Partial | 1 | Input fixed, needs full shortcuts |
-| Path security | Security | ⏳ TODO | 0 | Needs schema extension |
+| Path security | Security | 🚧 Progress | 2 | Validator implemented, integration pending |
 | Prompt management | KI Settings | ⏳ TODO | 0 | Needs role system |
 
 ---
