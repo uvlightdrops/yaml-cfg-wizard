@@ -10,7 +10,11 @@ TEMPLATE_ROOT = Path(__file__).resolve().parent / "templates"
 def available_templates() -> list[str]:
     if not TEMPLATE_ROOT.exists():
         return []
-    return sorted(p.name for p in TEMPLATE_ROOT.iterdir() if p.is_dir())
+    return sorted(
+        p.name
+        for p in TEMPLATE_ROOT.iterdir()
+        if p.is_dir() and not p.name.startswith("__") and not p.name.startswith(".")
+    )
 
 
 def scaffold_template(template_name: str, output_dir: str | Path) -> None:

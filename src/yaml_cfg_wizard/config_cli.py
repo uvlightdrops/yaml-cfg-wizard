@@ -54,17 +54,26 @@ def validate_config(
     config_dict: Dict[str, Any],
     schema: Dict[str, Any],
 ) -> None:
-    """Validate config against schema."""
-    import jsonschema
-    
+    """Validate config against schema, using the shared Draft7 validator for consistent error formatting."""
+    import tempfile
+
+    from .core import validate_schema
+
+    # validate_schema expects a schema file path; write schema to a temp file to reuse
+    # the single, consistent validation implementation instead of duplicating logic here.
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False, encoding="utf-8") as handle:
+        yaml.safe_dump(schema, handle)
+        schema_path = handle.name
+
     try:
-        jsonschema.validate(config_dict, schema)
+        validate_schema(config_dict, schema_path)
         typer.echo("✅ Config is valid")
-    except jsonschema.ValidationError as e:
-        typer.echo(f"❌ Validation error: {e.message}", err=True)
-        if e.path:
-            typer.echo(f"   Path: {' → '.join(str(p) for p in e.path)}", err=True)
-        raise typer.Exit(code=1) from e
+    except ValueError as exc:
+        for line in str(exc).splitlines():
+            typer.echo(f"❌ {line}", err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        Path(schema_path).unlink(missing_ok=True)
 
 
 def show_config_paths(search_paths: Optional[list[Path]] = None) -> None:

@@ -24,8 +24,8 @@
 
 **CLI Commands:**
 ```bash
-yaml-cfg-wizard config skeleton <schema>             # Generate skeleton
-yaml-cfg-wizard config verify <config> <schema>      # Validate
+yaml-cfg config skeleton <schema>             # Generate skeleton
+yaml-cfg config verify <config> <schema>      # Validate
 ```
 
 **Commits:**
@@ -52,9 +52,9 @@ yaml-cfg-wizard config verify <config> <schema>      # Validate
 
 **CLI Commands:**
 ```bash
-yaml-cfg-wizard config show [KEY]                     # Show config value
-yaml-cfg-wizard config list                           # List all
-yaml-cfg-wizard config paths                          # Show file locations
+yaml-cfg config show [KEY]                     # Show config value
+yaml-cfg config list                           # List all
+yaml-cfg config paths                          # Show file locations
 ```
 
 **Commits:**

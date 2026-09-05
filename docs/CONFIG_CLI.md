@@ -76,7 +76,7 @@ skeleton = scaffold_skeleton_from_schema(merged)
 
 #### `config skeleton` - Generate config skeleton
 ```bash
-yaml-cfg-wizard config skeleton base.schema.yaml \
+yaml-cfg config skeleton base.schema.yaml \
   --output ki.yaml \
   --schema app.schema.yaml
 ```
@@ -84,15 +84,15 @@ yaml-cfg-wizard config skeleton base.schema.yaml \
 #### `config show` - Display config value
 ```bash
 # Show single value
-yaml-cfg-wizard config show llm_provider --config ki.yaml
+yaml-cfg config show llm_provider --config ki.yaml
 
 # Show all (omit key)
-yaml-cfg-wizard config show --config ki.yaml
+yaml-cfg config show --config ki.yaml
 ```
 
 #### `config list` - Hierarchical key listing
 ```bash
-yaml-cfg-wizard config list --config ki.yaml
+yaml-cfg config list --config ki.yaml
 ```
 
 **Output Example:**
@@ -114,12 +114,12 @@ yaml-cfg-wizard config list --config ki.yaml
 
 #### `config verify` - Validate config
 ```bash
-yaml-cfg-wizard config verify ki.yaml base.schema.yaml
+yaml-cfg config verify ki.yaml base.schema.yaml
 ```
 
 #### `config paths` - Show search paths
 ```bash
-yaml-cfg-wizard config paths
+yaml-cfg config paths
 ```
 
 **Output Example:**
@@ -135,33 +135,31 @@ yaml-cfg-wizard config paths
 
 ### Other CLI Commands
 
-#### `scaffold` - Scaffold config templates
+#### `template scaffold` - Scaffold config templates
 ```bash
-yaml-cfg-wizard scaffold <template> <output-dir>
+yaml-cfg template scaffold <template> <output-dir>
 ```
 
-#### `resolve` - Resolve merged config
+#### `config resolve` - Resolve merged config
 ```bash
-yaml-cfg-wizard resolve \
+yaml-cfg config resolve \
   --defaults-dir config/defaults \
   --profiles-dir config/profiles \
   --stages-dir config/stages \
   --output resolved.yaml
 ```
 
-#### `validate` - Validate config file
+#### `profile list` / `show` / `set` / `create` - Manage config profiles
 ```bash
-yaml-cfg-wizard validate config.yaml schema.yaml
+yaml-cfg profile list config/profiles
+yaml-cfg profile show production --profiles-dir config/profiles
+yaml-cfg profile set production --profiles-dir config/profiles
+yaml-cfg profile create staging --profiles-dir config/profiles --from production
 ```
 
-#### `list-profiles` - List available profiles
+#### `env show` - Show env variables
 ```bash
-yaml-cfg-wizard list-profiles config/profiles
-```
-
-#### `env-show` - Show env variables
-```bash
-yaml-cfg-wizard env-show --prefix KI_
+yaml-cfg env show --prefix KI_
 ```
 
 ---
@@ -254,13 +252,13 @@ kicli-assist config show context_max_files
 ### 1. Initial Setup
 ```bash
 # Generate skeleton with all options
-yaml-cfg-wizard config skeleton base.schema.yaml -o ki.yaml
+yaml-cfg config skeleton base.schema.yaml -o ki.yaml
 
 # Edit with your values
 vim ki.yaml
 
 # Validate
-yaml-cfg-wizard config verify ki.yaml base.schema.yaml
+yaml-cfg config verify ki.yaml base.schema.yaml
 ```
 
 ### 2. Environment-Specific Configs
@@ -276,7 +274,7 @@ config/
       └── prod.yaml
 
 # Resolve for environment
-yaml-cfg-wizard resolve \
+yaml-cfg config resolve \
   --defaults-dir config \
   --profiles-dir config/profiles \
   --stages-dir config/stages \
@@ -288,7 +286,7 @@ yaml-cfg-wizard resolve \
 ```bash
 # Validate all configs in CI
 for config in config/**/*.yaml; do
-  yaml-cfg-wizard config verify "$config" schema.yaml || exit 1
+  yaml-cfg config verify "$config" schema.yaml || exit 1
 done
 ```
 
@@ -396,17 +394,17 @@ config/
 
 ### Config not found
 ```bash
-yaml-cfg-wizard config paths  # Check search paths
+yaml-cfg config paths  # Check search paths
 ls -la ki.yaml               # Verify file exists
 ```
 
 ### Validation error
 ```bash
 # Check exact error
-yaml-cfg-wizard config verify config.yaml schema.yaml
+yaml-cfg config verify config.yaml schema.yaml
 
 # Inspect config
-yaml-cfg-wizard config show --config config.yaml
+yaml-cfg config show --config config.yaml
 
 # Validate schema syntax
 python3 -c "import yaml; yaml.safe_load(open('schema.yaml'))"
@@ -415,10 +413,10 @@ python3 -c "import yaml; yaml.safe_load(open('schema.yaml'))"
 ### Merge not working
 ```bash
 # Test merge explicitly
-yaml-cfg-wizard config skeleton base.yaml --schema app.yaml
+yaml-cfg config skeleton base.yaml --schema app.yaml
 
 # Inspect result
-yaml-cfg-wizard config list
+yaml-cfg config list
 ```
 
 ---

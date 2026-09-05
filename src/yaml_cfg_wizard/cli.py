@@ -5,37 +5,25 @@ from typing import Optional
 
 import typer
 import yaml
-from .core import ConfigResolver, load_yaml_file, validate_schema
+
+from .core import ConfigResolver, load_yaml_file
 from .scaffold import available_templates, scaffold_template
 from .config_cli import show_config, list_config, validate_config, show_config_paths, generate_skeleton
+from .profile_cli import (
+    list_profiles as _list_profiles,
+    show_profile as _show_profile,
+    set_active_profile as _set_active_profile,
+    create_profile as _create_profile,
+    read_active_profile,
+)
 
 app = typer.Typer(help="YAML config merge and validation wizard")
 
 
-@app.command("scaffold")
-def scaffold(
-    template: str = typer.Argument(..., help="Template name to scaffold"),
-    output: str = typer.Argument(..., help="Directory where the config skeleton should be written"),
-) -> None:
-    if template not in available_templates():
-        typer.echo(f"Unknown template '{template}'. Available: {', '.join(available_templates()) or 'none'}", err=True)
-        raise typer.Exit(code=1)
-    try:
-        scaffold_template(template, output)
-        typer.echo(f"Scaffolded template '{template}' into {output}")
-    except FileExistsError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1)
-
-
-@app.command("list-templates")
-def list_templates() -> None:
-    templates = available_templates()
-    if not templates:
-        typer.echo("No templates available.")
-        return
-    for template in templates:
-        typer.echo(template)
+# ---------------------------------------------------------------------------
+# config: inspection, validation, skeleton generation, and layer resolution
+# ---------------------------------------------------------------------------
+config_app = typer.Typer(help="Config inspection, validation, and resolution")
 
 
 def _resolve_for_cli(
@@ -48,21 +36,30 @@ def _resolve_for_cli(
     stage: list[str],
     runtime: list[str],
     env_prefix: str,
-):
+) -> ConfigResolver:
+    # If no explicit profile was given but an active profile is set for this
+    # profiles_dir, use it automatically (see `yaml-cfg profile set`).
+    if profiles_dir and not profile:
+        active = read_active_profile(profiles_dir)
+        if active:
+            candidate = Path(profiles_dir) / f"{active}.yaml"
+            if candidate.exists():
+                profile = [str(candidate)]
+
     return ConfigResolver(
         defaults=defaults,
         profiles=profile,
         stage=stage,
         runtime=runtime,
         defaults_dir=defaults_dir,
-        profiles_dir=profiles_dir,
+        profiles_dir=None if profile else profiles_dir,
         stages_dir=stages_dir,
         runtime_file=runtime_file,
         env_prefix=env_prefix,
     )
 
 
-@app.command("resolve")
+@config_app.command("resolve")
 def resolve_config(
     defaults_dir: Optional[str] = typer.Option(None, "--defaults-dir", help="Directory with default YAML files"),
     profiles_dir: Optional[str] = typer.Option(None, "--profiles-dir", help="Directory with profile YAML files"),
@@ -75,6 +72,7 @@ def resolve_config(
     env_prefix: str = typer.Option("APP_", "--env-prefix", help="Environment variable prefix"),
     output: Optional[str] = typer.Option(None, "--output", help="Write resolved config to file"),
 ) -> None:
+    """Merge and resolve all config layers (defaults -> profile -> stage -> runtime -> env)."""
     resolver = _resolve_for_cli(
         defaults_dir,
         profiles_dir,
@@ -90,54 +88,6 @@ def resolve_config(
     if output:
         resolver.resolve_to_file(output)
     typer.echo(yaml.safe_dump(result, sort_keys=False, default_flow_style=False))
-
-
-@app.command("validate")
-def validate_config(
-    config: str = typer.Argument(..., help="Path to YAML config file"),
-    schema: str = typer.Argument(..., help="Path to schema file in YAML or JSON format"),
-) -> None:
-    data = load_yaml_file(config)
-    try:
-        validate_schema(data, schema)
-    except ValueError as exc:
-        for line in str(exc).splitlines()[1:]:
-            typer.echo(f"- {line}", err=True)
-        raise typer.Exit(code=1) from exc
-    typer.echo("Configuration is valid.")
-
-
-@app.command("list-profiles")
-def list_profiles(
-    profiles_dir: str = typer.Argument(..., help="Directory containing profile YAML files"),
-) -> None:
-    files = sorted(Path(profiles_dir).glob("*.yaml")) + sorted(Path(profiles_dir).glob("*.yml"))
-    if not files:
-        typer.echo("No profile files found.")
-        return
-    for file in files:
-        typer.echo(file.name)
-
-
-@app.command("env-show")
-def env_show(prefix: str = typer.Option("APP_", "--prefix")) -> None:
-    import os
-
-    matches = []
-    for key, value in sorted(os.environ.items()):
-        if key.startswith(prefix):
-            matches.append(f"{key}={value}")
-
-    if not matches:
-        typer.echo("No matching environment variables found.")
-        return
-
-    for item in matches:
-        typer.echo(item)
-
-
-# Config subcommands
-config_app = typer.Typer(help="Config inspection and management")
 
 
 @config_app.command("skeleton")
@@ -197,16 +147,128 @@ def paths(
     search_dir: Optional[str] = typer.Option(None, "--search-dir", "-d", help="Base directory for search paths"),
 ) -> None:
     """Show config file search paths."""
+    search_paths = None
     if search_dir:
         search_paths = [
             Path(search_dir) / "ki.yaml",
             Path(search_dir) / ".ki" / "ki.yaml",
             Path(search_dir) / ".ki.yaml",
         ]
-    show_config_paths(search_paths if search_dir else None)
+    show_config_paths(search_paths)
 
 
 app.add_typer(config_app, name="config")
+
+
+# ---------------------------------------------------------------------------
+# profile: list, inspect, activate, and create named config profiles
+# ---------------------------------------------------------------------------
+profile_app = typer.Typer(help="Profile listing and management")
+
+
+@profile_app.command("list")
+def profile_list(
+    profiles_dir: str = typer.Argument(..., help="Directory containing profile YAML files"),
+) -> None:
+    """List available profiles, marking the currently active one."""
+    _list_profiles(profiles_dir)
+
+
+@profile_app.command("show")
+def profile_show(
+    name: str = typer.Argument(..., help="Profile name (without extension)"),
+    profiles_dir: str = typer.Option(..., "--profiles-dir", "-d", help="Directory containing profile YAML files"),
+) -> None:
+    """Show the contents of a single profile."""
+    _show_profile(profiles_dir, name)
+
+
+@profile_app.command("set")
+def profile_set(
+    name: str = typer.Argument(..., help="Profile name (without extension) to activate"),
+    profiles_dir: str = typer.Option(..., "--profiles-dir", "-d", help="Directory containing profile YAML files"),
+) -> None:
+    """Mark a profile as active; `config resolve` will use it automatically."""
+    _set_active_profile(profiles_dir, name)
+
+
+@profile_app.command("create")
+def profile_create(
+    name: str = typer.Argument(..., help="Name of the new profile (without extension)"),
+    profiles_dir: str = typer.Option(..., "--profiles-dir", "-d", help="Directory containing profile YAML files"),
+    from_template: Optional[str] = typer.Option(
+        None, "--from", help="Copy contents from an existing profile as a starting point"
+    ),
+) -> None:
+    """Create a new profile file, optionally copied from an existing profile."""
+    _create_profile(profiles_dir, name, from_template)
+
+
+app.add_typer(profile_app, name="profile")
+
+
+# ---------------------------------------------------------------------------
+# template: scaffold entire config directory trees from bundled templates
+# ---------------------------------------------------------------------------
+template_app = typer.Typer(help="Config directory template scaffolding")
+
+
+@template_app.command("list")
+def template_list() -> None:
+    """List available scaffold templates."""
+    templates = available_templates()
+    if not templates:
+        typer.echo("No templates available.")
+        return
+    for template in templates:
+        typer.echo(template)
+
+
+@template_app.command("scaffold")
+def template_scaffold(
+    template: str = typer.Argument(..., help="Template name to scaffold"),
+    output: str = typer.Argument(..., help="Directory where the config skeleton should be written"),
+) -> None:
+    """Scaffold a full config directory tree (defaults/profiles/stages/runtime) from a template."""
+    if template not in available_templates():
+        typer.echo(f"Unknown template '{template}'. Available: {', '.join(available_templates()) or 'none'}", err=True)
+        raise typer.Exit(code=1)
+    try:
+        scaffold_template(template, output)
+        typer.echo(f"Scaffolded template '{template}' into {output}")
+    except FileExistsError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1)
+
+
+app.add_typer(template_app, name="template")
+
+
+# ---------------------------------------------------------------------------
+# env: environment variable inspection
+# ---------------------------------------------------------------------------
+env_app = typer.Typer(help="Environment variable inspection")
+
+
+@env_app.command("show")
+def env_show(prefix: str = typer.Option("APP_", "--prefix")) -> None:
+    """Show environment variables matching a prefix."""
+    import os
+
+    matches = []
+    for key, value in sorted(os.environ.items()):
+        if key.startswith(prefix):
+            matches.append(f"{key}={value}")
+
+    if not matches:
+        typer.echo("No matching environment variables found.")
+        return
+
+    for item in matches:
+        typer.echo(item)
+
+
+app.add_typer(env_app, name="env")
 
 
 if __name__ == "__main__":
