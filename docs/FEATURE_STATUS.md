@@ -1,207 +1,116 @@
-# Feature Status & Implementation Progress
+# YAML-Config-Wizard Features
 
 **Last Updated:** 2026-09-05  
-**Project:** yaml-cfg-wizard + ki-core + kicli-code-assist ecosystem  
-**Status:** 2 of 5 features complete
+**Scope:** yaml-cfg-wizard library only (not app-specific features)
 
 ---
 
 ## ✅ Completed Features
 
-### 1. Schema-Based Configuration System (Deployment)
+### 1. Schema Utilities & Management
 **Status:** ✅ **COMPLETE**
 
-**Customer Request:**
-> Bitte baue das repo so um dass wir unser schema holen (aus ki-core) und daraus hier ein mit yaml-cfg ein config skelet erzeugen mit den default werten. So dass dann die yaml configs gemäß yaml-cfg-wizard geholt und gemerged werden und keine weiteren fallbacks mehr im code vorkommen.
-
 **What Was Built:**
-- ✅ Schema consolidation from ki-core (base schema)
-- ✅ App-specific schema (kicli.schema.yaml) extends base schema
-- ✅ Config skeleton auto-generation from merged schemas
-- ✅ Layered config resolution (7-layer system)
-- ✅ Removed 300+ lines of legacy code-based fallbacks
-- ✅ Schema-driven defaults throughout
+- Schema merging with deep merge support
+- Skeleton generation from schemas
+- Schema validation and verification
+- Multi-schema composition for inheritance
 
 **Implementation Details:**
-- `ki-core/src/ki_core/schema/config.schema.yaml` - Base schema (packaged)
-- `kicli-code-assist/schema/kicli.schema.yaml` - App-specific schema
-- `yaml-cfg-wizard/src/yaml_cfg_wizard/schema_utils.py` - Schema merge & generation
-- `yaml-cfg-wizard/src/yaml_cfg_wizard/config_cli.py` - Config CLI utilities
-- Config resolution order: Env > Runtime > Stages > Profiles > Defaults > Files > Schema
+- `src/yaml_cfg_wizard/schema_utils.py` - Schema utilities
+- `src/yaml_cfg_wizard/core.py` - Schema validation
+- Supports JSON Schema format validation
+- Enables schema inheritance patterns
 
-**Commands Available:**
+**CLI Commands:**
 ```bash
-# Generate skeleton
-kicli-assist config init -o ki.yaml
-
-# Inspect config (via yaml-cfg-wizard)
-yaml-cfg-wizard config show [KEY]
-yaml-cfg-wizard config list
-yaml-cfg-wizard config skeleton <schema>
-yaml-cfg-wizard config verify <config> <schema>
-yaml-cfg-wizard config paths
+yaml-cfg-wizard config skeleton <schema>             # Generate skeleton
+yaml-cfg-wizard config verify <config> <schema>      # Validate
 ```
 
 **Commits:**
-- ki-core: refactor: Schema-based config system with ConfigResolver
-- yaml-cfg-wizard: feat: Add schema utilities for merging and skeleton generation
-- kicli-code-assist: feat: Add app-specific schema and config management commands
-- yaml-cfg-wizard: feat: Add config CLI utilities for show, list, validate, paths
-- yaml-cfg-wizard: docs: Add comprehensive config CLI documentation
+- feat: Add schema utilities for merging and skeleton generation
 
 **Documentation:**
-- [CONFIG_CLI.md](./CONFIG_CLI.md) - Detailed config CLI reference
-- [ki-core CONFIG_GUIDE.md](../../ki-core/CONFIG_GUIDE.md) - Configuration architecture
+- [CONFIG_CLI.md](./CONFIG_CLI.md) - CLI reference
 
 ---
 
-### 2. Chat History Management (I/O Features)
+### 2. Configuration CLI Utilities
 **Status:** ✅ **COMPLETE**
 
-**Customer Request:**
-> Der aktuelle Chat verlauf manuell als Datei speichern
-
 **What Was Built:**
-- ✅ Chat history persistence in database/files
-- ✅ Manual save functionality (CLI command)
-- ✅ Export chat history to file formats
+- Config show/display functionality
+- Config list all settings
+- Config path discovery
+- Config file location reporting
 
 **Implementation Details:**
-- Chat history stored in `config.kicli_chat_history_dir`
-- Manual export via CLI command
-- Multiple export formats supported
+- `src/yaml_cfg_wizard/config_cli.py` - CLI utilities
+- Functions for show, list, validate, paths, skeleton
+- Reusable for other projects
+
+**CLI Commands:**
+```bash
+yaml-cfg-wizard config show [KEY]                     # Show config value
+yaml-cfg-wizard config list                           # List all
+yaml-cfg-wizard config paths                          # Show file locations
+```
 
 **Commits:**
-- kicli-code-assist: fix: chat history missing, new cli cmd
-- kicli-code-assist: Add chat history management
+- feat: Add config CLI utilities for show, list, validate, paths
+
+**Documentation:**
+- [CONFIG_CLI.md](./CONFIG_CLI.md) - Comprehensive reference
 
 ---
 
-## 🚧 In Progress / Pending
-
-### 3. TUI Focus Management (GUI)
-**Status:** 🚧 **PARTIALLY COMPLETE**
-
-**Customer Request:**
-- [ ] Für den File preview muss es auch einen Fokus geben um ihn scrollen zu können bei Bedarf.
-- [ ] shortcuts für Fokus STRG + x mit x aus "F" file preview, "B" für Browser, "C" für Chat, "I" für Input.
-
-**Current State:**
-- ✅ TUI input focus fixed (recent commit: "Fix TUI input focus and submission")
-- ✅ File preview component exists
-- ❓ Full focus management system and keyboard shortcuts need implementation
-
-**Next Steps:**
-1. Implement scrollable file preview with focus
-2. Add keyboard shortcuts (CTRL+F, CTRL+B, CTRL+C, CTRL+I)
-3. Focus ring navigation between panes
-
-**Files Involved:**
-- `kicli-code-assist/ui/textual_app.py` - TUI implementation
-- `kicli-code-assist/ui/components/` - Component library
-
----
-
-### 4. Absolute Path Security Setting (Security)
-**Status:** 🚧 **IN PROGRESS**
-
-**Customer Request:**
-> Setting für den Absolutpfad im Linux system, der nicht verlassen werden darf
+### 3. Path Validation Utilities
+**Status:** ✅ **COMPLETE**
 
 **What Was Built:**
-- ✅ Schema extended with security section in `ki-core` (allowed_base_path, enforce_path_restriction)
-- ✅ PathValidator class in `yaml-cfg-wizard` with full path validation
-- ✅ Security helper module in `kicli-code-assist`
-- ✅ 13 comprehensive tests for path validation (all passing)
-- 🚧 Integration into file operations (in progress)
+- PathValidator class with full API
+- Directory traversal prevention
+- Path normalization and resolution
+- Optional enforcement modes (warn vs block)
+- 13 comprehensive tests (all passing)
 
-**Current Implementation:**
-- `yaml-cfg-wizard/src/yaml_cfg_wizard/path_validator.py` - Core validation logic
-  - PathValidator class with is_allowed(), validate(), make_relative()
-  - Support for optional enforcement (warn vs block)
-  - Prevents directory traversal attacks
-  - Full path normalization
-- `yaml-cfg-wizard/tests/test_path_validator.py` - 13 comprehensive tests
-- `kicli-code-assist/kicli_code_assist/security.py` - Integration helpers
+**Implementation Details:**
+- `src/yaml_cfg_wizard/path_validator.py` - Core validator (100 LOC)
+- `tests/test_path_validator.py` - 13 tests
+- `__init__.py` - Exported for reuse
+- PathSecurityError exception
 
-**Security Features:**
-- ✅ Absolute path restriction (no escaping allowed)
-- ✅ Directory traversal prevention
-- ✅ Relative path support within base
-- ✅ Optional enforcement (warn vs block)
-- ✅ Path normalization and resolution
+**Functions Available:**
+```python
+from yaml_cfg_wizard import PathValidator, create_validator_from_config
 
-**Next Steps:**
-1. Integrate PathValidator into file browser operations
-2. Add validation to diff file loading
-3. Add CLI command for testing path validation
-4. Add TUI settings for security configuration
+validator = PathValidator(allowed_base_path="/data", enforce=True)
+validator.is_allowed("/data/file.txt")           # True
+validator.validate("/data/file.txt")             # Path object
+validator.make_relative("/data/file.txt")        # Path object
+```
 
-**Files Involved:**
-- `ki-core/src/ki_core/schema/config.schema.yaml` - Security section added
-- `yaml-cfg-wizard/src/yaml_cfg_wizard/path_validator.py` - Core validator
-- `yaml-cfg-wizard/tests/test_path_validator.py` - Tests (13/13 passing)
-- `kicli-code-assist/kicli_code_assist/security.py` - Integration module
+**Commits:**
+- feat: Add path validation utilities for security
+
+**Documentation:**
+- [../kicli-code-assist/docs/SECURITY.md](../../kicli-code-assist/docs/SECURITY.md) - Usage guide for integration
 
 ---
 
-### 5. Prompt Management (KI Settings)
-**Status:** ⏳ **NOT STARTED**
+## 📌 App-Specific Features
 
-**Customer Request:**
-> Prompts verwaltung. Mehrere Rollen wählbar. Sprachlernmodus etc.
+App-specific features (Security, GUI, KI Settings, etc.) have been moved to their respective project docs:
 
-**What's Needed:**
-- [ ] Prompt templates system
-- [ ] Multiple selectable roles (e.g., Developer, Tutor, Translator)
-- [ ] Language learning mode
-- [ ] Prompt management CLI/UI
+- **[kicli-code-assist/docs/FEATURES_IMPLEMENTED.md](../../kicli-code-assist/docs/FEATURES_IMPLEMENTED.md)** - kicli-code-assist implemented features
+- **[kicli-code-assist/docs/customer_requests.md](../../kicli-code-assist/docs/customer_requests.md)** - kicli-code-assist backlog
 
-**Implementation Plan:**
-1. Schema for prompt templates in `ki-core`
-2. Role definitions and management
-3. CLI for prompt management in `yaml-cfg-wizard`
-4. UI integration for role selection in `kicli-code-assist`
-
-**Related Files:**
-- `ki-core/src/ki_core/schema/config.schema.yaml` - Add prompts section
-- `yaml-cfg-wizard/src/yaml_cfg_wizard/cli.py` - Add prompt subcommands
-- `kicli-code-assist/ui/` - Add role selector UI
-
----
-
-## 📊 Summary
-
-| Feature | Category | Status | Commits | Notes |
-|---------|----------|--------|---------|-------|
-| Schema-based config | Deployment | ✅ Done | 5 | Fully integrated, no legacy fallbacks |
-| Chat history save | I/O | ✅ Done | 2 | Export functionality working |
-| TUI focus mgmt | GUI | 🚧 Partial | 1 | Input fixed, needs full shortcuts |
-| Path security | Security | 🚧 Progress | 2 | Validator implemented, integration pending |
-| Prompt management | KI Settings | ⏳ TODO | 0 | Needs role system |
+This file now focuses on yaml-cfg-wizard library features only.
 
 ---
 
 ## 🔗 Related Documentation
 
-- **Config System:** [CONFIG_CLI.md](./CONFIG_CLI.md)
-- **ki-core:** [ki-core CONFIG_GUIDE.md](../../ki-core/CONFIG_GUIDE.md)
-- **kicli-code-assist:** [docs/customer_requests.md](../../kicli-code-assist/docs/customer_requests.md)
-
----
-
-## 📝 Next Actions
-
-**High Priority:**
-1. Implement full TUI focus management system
-2. Add keyboard shortcuts for pane navigation
-3. Add path security validation
-
-**Medium Priority:**
-1. Implement prompt templates system
-2. Add role management UI
-3. Expand CLI utilities
-
-**Low Priority:**
-1. Language learning mode features
-2. Advanced prompt templating
+- [CONFIG_CLI.md](./CONFIG_CLI.md) - Complete CLI reference
+- [kicli-code-assist FEATURES_IMPLEMENTED.md](../../kicli-code-assist/docs/FEATURES_IMPLEMENTED.md) - App features
