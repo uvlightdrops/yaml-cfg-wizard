@@ -8,6 +8,7 @@ import yaml
 from .core import ConfigResolver, load_yaml_file, validate_schema
 from .scaffold import available_templates, scaffold_template
 from .config_cli import show_config, list_config, validate_config, show_config_paths, generate_skeleton
+from . import prompts_cli
 
 app = typer.Typer(help="YAML config merge and validation wizard")
 
@@ -207,6 +208,161 @@ def paths(
 
 
 app.add_typer(config_app, name="config")
+
+
+# Prompts subcommands
+prompts_app = typer.Typer(help="Prompt management and configuration")
+
+
+@prompts_app.command("list")
+def prompts_list(
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+    enabled_only: bool = typer.Option(False, "--enabled-only", help="Show only enabled roles"),
+) -> None:
+    """List all available prompt roles."""
+    prompts_cli.list_roles(config_file, enabled_only)
+
+
+@prompts_app.command("show")
+def prompts_show(
+    role_id: str = typer.Argument(..., help="Role ID to show"),
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """Show details of a specific prompt role."""
+    prompts_cli.show_role(role_id, config_file)
+
+
+@prompts_app.command("set")
+def prompts_set(
+    role_id: str = typer.Argument(..., help="Role ID to activate"),
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """Set the active prompt role."""
+    prompts_cli.set_active_role(role_id, config_file)
+
+
+# Templates subcommands
+templates_app = typer.Typer(help="Manage custom prompt templates")
+
+
+@templates_app.command("list")
+def templates_list(
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """List all custom prompt templates."""
+    prompts_cli.list_templates(config_file)
+
+
+@templates_app.command("show")
+def templates_show(
+    template_id: str = typer.Argument(..., help="Template ID to show"),
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """Show details of a specific template."""
+    prompts_cli.show_template(template_id, config_file)
+
+
+@templates_app.command("create")
+def templates_create(
+    template_id: str = typer.Argument(..., help="Unique template ID"),
+    name: str = typer.Option(..., "--name", "-n", help="Template name"),
+    system_prompt: str = typer.Option(..., "--prompt", "-p", help="System prompt content"),
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+    description: str = typer.Option("", "--description", "-d", help="Template description"),
+    tags: Optional[list[str]] = typer.Option(None, "--tag", "-t", help="Tags for the template"),
+) -> None:
+    """Create a new custom prompt template."""
+    prompts_cli.create_template(template_id, name, system_prompt, config_file, description, tags)
+
+
+@templates_app.command("delete")
+def templates_delete(
+    template_id: str = typer.Argument(..., help="Template ID to delete"),
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """Delete a custom prompt template."""
+    prompts_cli.delete_template(template_id, config_file)
+
+
+# Favorites subcommands
+favorites_app = typer.Typer(help="Manage favorite roles and templates")
+
+
+@favorites_app.command("add")
+def favorites_add(
+    identifier: str = typer.Argument(..., help="Role or template ID to favorite"),
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """Add a role or template to favorites."""
+    prompts_cli.add_favorite(identifier, config_file)
+
+
+@favorites_app.command("remove")
+def favorites_remove(
+    identifier: str = typer.Argument(..., help="Role or template ID to unfavorite"),
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """Remove a role or template from favorites."""
+    prompts_cli.remove_favorite(identifier, config_file)
+
+
+# Language Learning subcommands
+ll_app = typer.Typer(help="Manage language learning mode")
+
+
+@ll_app.command("enable")
+def ll_enable(
+    target_language: str = typer.Argument(..., help="Language to learn"),
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+    level: str = typer.Option("beginner", "--level", "-l", help="Difficulty level (beginner/intermediate/advanced)"),
+    native: str = typer.Option("English", "--native", help="Native language for translations"),
+) -> None:
+    """Enable language learning mode."""
+    prompts_cli.enable_language_learning(target_language, config_file, level, native)
+
+
+@ll_app.command("disable")
+def ll_disable(
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """Disable language learning mode."""
+    prompts_cli.disable_language_learning(config_file)
+
+
+@ll_app.command("show")
+def ll_show(
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """Show language learning configuration."""
+    prompts_cli.show_language_learning(config_file)
+
+
+# Add nested command groups
+prompts_app.add_typer(templates_app, name="templates")
+prompts_app.add_typer(favorites_app, name="favorites")
+prompts_app.add_typer(ll_app, name="language-learning")
+
+# Config and prompts subcommands to main app
+@prompts_app.command("export")
+def prompts_export(
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file (stdout if omitted)"),
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+) -> None:
+    """Export prompt configuration to file."""
+    prompts_cli.export_config(output, config_file)
+
+
+@prompts_app.command("import")
+def prompts_import(
+    input_file: str = typer.Argument(..., help="Input file to import"),
+    config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Target config file"),
+    merge: bool = typer.Option(True, "--merge/--replace", help="Merge with existing or replace"),
+) -> None:
+    """Import prompt configuration from file."""
+    prompts_cli.import_config(input_file, config_file, merge)
+
+
+app.add_typer(prompts_app, name="prompts")
 
 
 if __name__ == "__main__":
