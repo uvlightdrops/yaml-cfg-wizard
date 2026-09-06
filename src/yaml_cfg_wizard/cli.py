@@ -6,8 +6,9 @@ from typing import Optional
 import typer
 import yaml
 
-from .core import ConfigResolver, load_yaml_file
+from .core import ConfigResolver, deep_merge, load_yaml_file
 from .scaffold import available_templates, scaffold_template
+from .schema_utils import merge_schemas, scaffold_skeleton_from_schema
 from .config_cli import show_config, list_config, validate_config, show_config_paths, generate_skeleton
 from .profile_cli import (
     list_profiles as _list_profiles,
@@ -24,6 +25,47 @@ app = typer.Typer(help="YAML config merge and validation wizard")
 # config: inspection, validation, skeleton generation, and layer resolution
 # ---------------------------------------------------------------------------
 config_app = typer.Typer(help="Config inspection, validation, and resolution")
+
+
+def _auto_discover_schemas() -> list[str]:
+    """Best-effort discovery of schema files describing the *full* (inherited)
+    config tree: ki-core's generic base schema (if ki-core happens to be
+    installed) plus any app-specific ``schema/*.schema.yaml`` files under the
+    current directory.
+
+    This lets ``config show``/``config list``/``config resolve`` display the
+    complete, inherited config shape (not just the keys physically present in
+    a single YAML file) without hard-coupling yaml-cfg-wizard to ki-core: the
+    ki-core import is optional and silently skipped if unavailable.
+    """
+    schemas: list[str] = []
+    try:
+        from ki_core.schema_manager import get_schema_path
+
+        base = get_schema_path()
+        if Path(base).exists():
+            schemas.append(str(base))
+    except Exception:
+        pass
+
+    schema_dir = Path.cwd() / "schema"
+    if schema_dir.is_dir():
+        for candidate in sorted(schema_dir.glob("*.schema.yaml")):
+            resolved = str(candidate)
+            if resolved not in schemas:
+                schemas.append(resolved)
+    return schemas
+
+
+def _apply_schema_defaults(config_dict: dict, schemas: Optional[list[str]]) -> dict:
+    """Fill in keys declared by ``schemas`` but missing from ``config_dict``
+    with their schema defaults, so inherited/base sections are visible even
+    when a config file only sets its own app-specific values."""
+    resolved_schemas = schemas if schemas else _auto_discover_schemas()
+    if not resolved_schemas:
+        return config_dict
+    schema_defaults = scaffold_skeleton_from_schema(merge_schemas(*resolved_schemas))
+    return deep_merge(schema_defaults, config_dict)
 
 
 def _resolve_for_cli(
@@ -71,6 +113,13 @@ def resolve_config(
     runtime: list[str] = typer.Option([], "--runtime", help="Explicit runtime YAML files"),
     env_prefix: str = typer.Option("APP_", "--env-prefix", help="Environment variable prefix"),
     output: Optional[str] = typer.Option(None, "--output", help="Write resolved config to file"),
+    schema: Optional[list[str]] = typer.Option(
+        None,
+        "--schema",
+        help="Schema file(s) whose defaults fill in keys missing from the resolved layers "
+        "(auto-discovered from ki-core's base schema + ./schema/*.schema.yaml if omitted)",
+    ),
+    no_schema: bool = typer.Option(False, "--no-schema", help="Disable schema-defaults auto-discovery"),
 ) -> None:
     """Merge and resolve all config layers (defaults -> profile -> stage -> runtime -> env)."""
     resolver = _resolve_for_cli(
@@ -85,6 +134,8 @@ def resolve_config(
         env_prefix,
     )
     result = resolver.resolve()
+    if not no_schema:
+        result = _apply_schema_defaults(result, schema)
     if output:
         resolver.resolve_to_file(output)
     typer.echo(yaml.safe_dump(result, sort_keys=False, default_flow_style=False))
@@ -104,10 +155,19 @@ def skeleton(
 def show(
     key: Optional[str] = typer.Argument(None, help="Config key to show (omit to show all)"),
     config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+    schema: Optional[list[str]] = typer.Option(
+        None,
+        "--schema",
+        help="Schema file(s) whose defaults fill in inherited/base keys missing from --config "
+        "(auto-discovered from ki-core's base schema + ./schema/*.schema.yaml if omitted)",
+    ),
+    no_schema: bool = typer.Option(False, "--no-schema", help="Disable schema-defaults auto-discovery"),
 ) -> None:
     """Show config value by key."""
     try:
         config_dict = load_yaml_file(config_file)
+        if not no_schema:
+            config_dict = _apply_schema_defaults(config_dict, schema)
         show_config(config_dict, key)
     except FileNotFoundError:
         typer.echo(f"❌ Config file not found: {config_file}", err=True)
@@ -117,10 +177,19 @@ def show(
 @config_app.command("list")
 def list_keys(
     config_file: str = typer.Option("ki.yaml", "--config", "-c", help="Config file path"),
+    schema: Optional[list[str]] = typer.Option(
+        None,
+        "--schema",
+        help="Schema file(s) whose defaults fill in inherited/base keys missing from --config "
+        "(auto-discovered from ki-core's base schema + ./schema/*.schema.yaml if omitted)",
+    ),
+    no_schema: bool = typer.Option(False, "--no-schema", help="Disable schema-defaults auto-discovery"),
 ) -> None:
     """List all config keys in hierarchical view."""
     try:
         config_dict = load_yaml_file(config_file)
+        if not no_schema:
+            config_dict = _apply_schema_defaults(config_dict, schema)
         list_config(config_dict)
     except FileNotFoundError:
         typer.echo(f"❌ Config file not found: {config_file}", err=True)
