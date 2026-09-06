@@ -143,12 +143,27 @@ def resolve_config(
 
 @config_app.command("skeleton")
 def skeleton(
-    base_schema: str = typer.Argument(..., help="Path to base schema file"),
+    base_schema: Optional[str] = typer.Argument(
+        None,
+        help="Path to base schema file (auto-discovered from ki-core's base schema + "
+        "./schema/*.schema.yaml if omitted)",
+    ),
     output: str = typer.Option("ki.yaml", "--output", "-o", help="Output config file path"),
     additional: Optional[list[str]] = typer.Option(None, "--schema", help="Additional schema files to merge"),
 ) -> None:
     """Generate config skeleton from schema."""
-    generate_skeleton(base_schema, output, additional)
+    if base_schema is not None:
+        schemas = [base_schema, *(additional or [])]
+    else:
+        schemas = _auto_discover_schemas() + (additional or [])
+        if not schemas:
+            typer.echo(
+                "❌ No schema found: pass a base schema explicitly, or run this from a "
+                "directory with ./schema/*.schema.yaml (and/or ki-core installed).",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+    generate_skeleton(schemas[0], output, schemas[1:])
 
 
 @config_app.command("show")
