@@ -143,11 +143,15 @@ automatically whenever the same `--profiles-dir` is passed, without needing
 ### template list / scaffold
 
 Scaffold a full config directory tree (defaults/profiles/stages/runtime) from
-a bundled template:
+a template. yaml-cfg-wizard ships with **no bundled templates** (it is
+app-agnostic); drop your own template directory under
+`site-packages/yaml_cfg_wizard/templates/<name>/` (or vendor/fork the
+package) to use this feature, following the same
+defaults/profiles/stages/runtime/schema layout `ConfigResolver` expects:
 
 ```bash
 yaml-cfg template list
-yaml-cfg template scaffold ia3 /path/to/your/project/config
+yaml-cfg template scaffold <name> /path/to/your/project/config
 ```
 
 ### env show
@@ -176,89 +180,6 @@ config = resolver.resolve()
 print(config)
 ```
 
-## IA3 template format
-
-The package includes an IA3-style template under `src/yaml_cfg_wizard/templates/ia3/`. This is a reusable scaffold, not the live config of the sim project.
-
-```bash
-yaml-cfg template scaffold ia3 /path/to/your/project/config
-```
-
-This creates a layout like:
-
-```text
-config/
-├── defaults/
-│   ├── ports.yaml
-│   ├── world.yaml
-│   ├── node.yaml
-│   ├── ai.yaml
-│   └── ui.yaml
-├── profiles/
-│   ├── small-test.yaml
-│   ├── medium-standard.yaml
-│   ├── large-federated.yaml
-│   └── perf-benchmark.yaml
-├── stages/
-│   ├── dev.yaml
-│   ├── staging.yaml
-│   └── prod.yaml
-├── runtime/
-│   └── runtime.yaml
-├── schema/
-│   └── ia3-config.schema.yaml
-└── README.md
-```
-
-This is intentionally generic. The consuming app remains responsible for the real config values it actually uses.
-
-Example default config:
-
-```yaml
-world:
-  width: 2560
-  height: 2560
-  tick_rate_ms: 200
-  terrain:
-    grass_ratio: 0.62
-    forest_ratio: 0.18
-    water_ratio: 0.08
-    river_width: 3
-  settlements:
-    count: 4
-    min_distance: 80
-  agents:
-    max_per_node: 1000
-```
-
-Example profile:
-
-```yaml
-world:
-  width: 512
-  height: 512
-  tick_rate_ms: 50
-  agents:
-    max_per_node: 50
-
-ai:
-  ollama:
-    enabled: false
-```
-
-Example stage:
-
-```yaml
-node:
-  id: ia3-staging-1
-  role: staging
-
-ui:
-  polling:
-    compact_interval_ms: 1500
-    full_state_interval_ms: 6000
-```
-
 Example runtime override:
 
 ```yaml
@@ -275,7 +196,7 @@ Merge order:
 4. runtime
 5. environment variables
 
-This is the reusable pattern for IA3 config layering, and it allows all services to share one config contract without duplicating merge logic.
+This is the reusable pattern for layered config resolution, and it allows all services to share one config contract without duplicating merge logic.
 
 ## Notes
 

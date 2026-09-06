@@ -1,9 +1,0 @@
-ports:
-  direct_host:
-    web_client: 12000
-    api_gateway: 17080
-    world_sim: 17081
-    agent_service: 50051
-  k8s:
-    web_client: 13000
-    api_gateway: 18080
