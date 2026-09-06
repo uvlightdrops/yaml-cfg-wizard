@@ -125,14 +125,6 @@ yaml-cfg config show llm_provider --config ki.yaml
 yaml-cfg config list --config ki.yaml
 ```
 
-### config paths
-
-Show config file search paths:
-
-```bash
-yaml-cfg config paths
-```
-
 ### profile list / show / set / create
 
 Manage named config profiles:

@@ -76,29 +76,6 @@ def validate_config(
         Path(schema_path).unlink(missing_ok=True)
 
 
-def show_config_paths(search_paths: Optional[list[Path]] = None) -> None:
-    """Show config file search paths and existence status."""
-    if search_paths is None:
-        search_paths = [
-            Path.cwd() / "ki.yaml",
-            Path.home() / ".ki" / "ki.yaml",
-            Path.home() / ".ki.yaml",
-            Path("/etc/ki/ki.yaml"),
-        ]
-    
-    typer.echo("📁 Config file search paths:")
-    for p in search_paths:
-        status = "✅ exists " if p.exists() else "  missing"
-        typer.echo(f"  {status}: {p}")
-    
-    # Show env var override
-    import os
-    env_override = os.getenv("KI_CONFIG_PATH")
-    if env_override:
-        typer.echo(f"\n📌 Environment override (KI_CONFIG_PATH):")
-        typer.echo(f"  {env_override}")
-
-
 def generate_skeleton(
     base_schema_path: Path | str,
     output_path: Path | str,

@@ -9,7 +9,7 @@ import yaml
 from .core import ConfigResolver, deep_merge, load_yaml_file
 from .scaffold import available_templates, scaffold_template
 from .schema_utils import merge_schemas, scaffold_skeleton_from_schema
-from .config_cli import show_config, list_config, validate_config, show_config_paths, generate_skeleton
+from .config_cli import show_config, list_config, validate_config, generate_skeleton
 from .profile_cli import (
     list_profiles as _list_profiles,
     show_profile as _show_profile,
@@ -209,21 +209,6 @@ def verify(
     except FileNotFoundError as e:
         typer.echo(f"❌ File not found: {e}", err=True)
         raise typer.Exit(code=1)
-
-
-@config_app.command("paths")
-def paths(
-    search_dir: Optional[str] = typer.Option(None, "--search-dir", "-d", help="Base directory for search paths"),
-) -> None:
-    """Show config file search paths."""
-    search_paths = None
-    if search_dir:
-        search_paths = [
-            Path(search_dir) / "ki.yaml",
-            Path(search_dir) / ".ki" / "ki.yaml",
-            Path(search_dir) / ".ki.yaml",
-        ]
-    show_config_paths(search_paths)
 
 
 app.add_typer(config_app, name="config")

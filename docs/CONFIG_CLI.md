@@ -65,7 +65,6 @@ skeleton = scaffold_skeleton_from_schema(merged)
 - `show_config(config_dict, key)` - Display config value
 - `list_config(config_dict)` - Show hierarchical tree view
 - `validate_config(config_dict, schema)` - Validate against schema
-- `show_config_paths(search_paths)` - Show file locations
 - `generate_skeleton(base_schema, output, additional_schemas)` - Generate skeleton
 
 ---
@@ -115,20 +114,6 @@ yaml-cfg config list --config ki.yaml
 #### `config verify` - Validate config
 ```bash
 yaml-cfg config verify ki.yaml base.schema.yaml
-```
-
-#### `config paths` - Show search paths
-```bash
-yaml-cfg config paths
-```
-
-**Output Example:**
-```
-📁 Config file search paths:
-  ✅ exists : /home/user/ki.yaml
-    missing: /home/user/.ki/ki.yaml
-    missing: /home/user/.ki.yaml
-    missing: /etc/ki/ki.yaml
 ```
 
 ---
@@ -394,7 +379,6 @@ config/
 
 ### Config not found
 ```bash
-yaml-cfg config paths  # Check search paths
 ls -la ki.yaml               # Verify file exists
 ```
 

@@ -47,14 +47,13 @@ yaml-cfg config verify <config> <schema>      # Validate
 
 **Implementation Details:**
 - `src/yaml_cfg_wizard/config_cli.py` - CLI utilities
-- Functions for show, list, validate, paths, skeleton
+- Functions for show, list, validate, skeleton
 - Reusable for other projects
 
 **CLI Commands:**
 ```bash
 yaml-cfg config show [KEY]                     # Show config value
 yaml-cfg config list                           # List all
-yaml-cfg config paths                          # Show file locations
 ```
 
 **Commits:**
