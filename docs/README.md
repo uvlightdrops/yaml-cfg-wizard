@@ -1,4 +1,10 @@
 
+## Canonical YAML documentation
+
+Current operation: [YAML_CONFIG_SYSADMIN.md](../doc/YAML_CONFIG_SYSADMIN.md).
+Engineering and ideas: [YAML_CONFIG_CONCEPTS.md](../doc/YAML_CONFIG_CONCEPTS.md).
+Historical excerpts: [YAML_CONFIG_ARCHIVE.md](../doc/YAML_CONFIG_ARCHIVE.md).
+
 ## Project Role in KI Ecosystem
 
 yaml-cfg-wizard is designed to be **app-agnostic** and reusable. It provides:
@@ -36,4 +42,3 @@ But implements in its own project:
 - Prompt Management feature
 - Security settings
 - Custom CLI commands for prompts, security, etc.
-

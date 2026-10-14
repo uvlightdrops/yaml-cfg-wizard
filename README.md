@@ -2,6 +2,19 @@
 
 A reusable YAML configuration resolver and optional CLI wizard for layered config projects.
 
+## Current operation and design
+
+- [YAML_CONFIG_SYSADMIN.md](doc/YAML_CONFIG_SYSADMIN.md): current app-specific
+  resolution, setup, CLI/UI operation, secrets and restart requirements.
+- [YAML_CONFIG_CONCEPTS.md](doc/YAML_CONFIG_CONCEPTS.md): implemented components
+  versus future engineering ideas and integration gaps.
+- [YAML_CONFIG_ARCHIVE.md](doc/YAML_CONFIG_ARCHIVE.md): superseded YAML-only
+  excerpts with source provenance, not operating instructions.
+
+Status is based on current working-tree code, including unfinished extensions,
+not proof of an installed or tested production rollout. The editor is a scalar
+allowlist API, not a full configuration-tree UI.
+
 ## Goal
 
 This package is designed to be reused by apps that need deterministic multi-layer config resolution with:
@@ -75,6 +88,83 @@ With CLI support:
 pip install "yaml-cfg-wizard[cli]"
 ```
 
+With the optional server-rendered Django adapter:
+
+```bash
+pip install "yaml-cfg-wizard[django]"
+```
+
+## Optional configuration editor
+
+`yaml_cfg_wizard.editor` has no web-framework dependency. The host registers
+fixed file IDs, approved non-secret scalar `Field` paths, a complete JSON
+Schema, and a `resolve(file_id, candidate_layer)` callback. The callback must
+**replace** that layer in the real resolution chain, including higher-priority
+environment/credential layers, rather than merge onto an already resolved
+configuration. It must not include database overrides in the editable layer:
+the host should exclude DB-owned fields or explicitly explain their precedence.
+
+```python
+from pathlib import Path
+from yaml_cfg_wizard.editor import Editor, Field
+
+editor = Editor(
+    files={"runtime": Path("/srv/my-app/config/runtime/runtime.yaml")},
+    fields=[Field("node.public_url", "Public URL")],
+    resolve=resolve_candidate,  # supplied by the application
+    schema=effective_schema,    # complete application JSON Schema
+)
+snapshot = editor.snapshot("runtime")
+snapshot = editor.save("runtime", snapshot.revision, {"node.public_url": ""})
+snapshot = editor.save("runtime", snapshot.revision, {}, remove=["node.public_url"])
+```
+
+Snapshots contain only registered paths, their override presence/value and their
+effective value. Secret-named fields cannot be registered; URL credentials,
+queries/fragments and non-scalar values are hidden. Applications must allowlist
+only genuinely public fields (a schema is not a secret detector). Never expose
+the full resolved dictionary or raw YAML in a template. Empty string and null
+are values; removal is a separate operation that restores layer inheritance.
+
+Before writing, both submitted field values and the **full effective config**
+are validated. Errors never contain offending values. A SHA-256 revision rejects
+stale writes (`ConflictError`); the entire target file contributes to it.
+Higher-layer changes are resolved again at save time, but are not part of this
+file revision. Saves preserve unrelated values and existing permission bits
+(new files use `0600`), fsync a same-directory temporary file, atomically replace
+the target, and fsync the directory. YAML formatting/comments are not preserved.
+Missing targets are created; symlinked paths are rejected; inputs are limited
+to 1 MiB. The Unix advisory `.editor.lock` sidecar must be honored by other
+writers to eliminate races with external file editors. Keep the directory
+host-owned, not writable by untrusted users. Locks are intentionally persistent.
+
+`yaml_cfg_wizard.django.render_editor(request, editor, template_name, context)`
+supports GET and CSRF-protected POST with a host-owned HTML template. It is not
+an endpoint or authentication system: **the host must enforce active admin
+authorization before calling it** and use its existing Django middleware.
+POST fields are `file`, `revision`, `path`, `action` (`set` or `remove`), and
+`value` (YAML scalar, blank means empty string). Template context includes
+`rows`, `snapshot`, `files`, `file_id`, `error`, and `saved`; supplied values are
+never echoed after errors. Invalid requests return 400, stale writes 409.
+No SPA, JavaScript build, or Node dependency is needed.
+
+Host adapters currently live in ki-knowledge (`/settings/config/sync/`) and
+ia3simworld (`ia3simworld/packages/yaml-cfg-wizard-ui/`, distribution
+`yaml-cfg-wizard-ui`, import module `yaml_cfg_wizard_ui`, factory
+`yaml_cfg_wizard_ui.create_editor`). Despite its reusable package name, the
+current package implements **only the IA3 adapter for `node.master_url`**,
+not a generic full-tree configuration UI. It provides an offline Python API
+plus a gated gateway bridge at `/api/admin/config-editor`. The bridge requires local admin
+authentication, transport/CSRF checks and an explicitly shared startup contract;
+it rejects stages. This describes current code, not verified deployment.
+See the sysadmin guide for its restricted scope and prerequisites.
+
+Run the framework-free regression tests with
+`python -m unittest discover -s tests`. ki-knowledge's
+`tests/test_config_editor.py` additionally contains Django authorization, CSRF,
+form-write and config-cache cases; their presence alone does not establish that
+the current extensions have passed or are installed.
+
 ## CLI commands
 
 The `yaml-cfg` command provides subcommands organized into four groups:
@@ -99,6 +189,12 @@ yaml-cfg config resolve \
 If a profile has been activated with `yaml-cfg profile set` (see below), it is
 picked up automatically from `--profiles-dir` unless `--profile` is given
 explicitly to override it.
+Without an active profile this directory loads all profile files.
+`--stages-dir` always loads all stage files; use explicit file paths with
+`--stage` to select one. These generic commands do not reproduce ki-core's
+selector/credentials contract automatically. `--schema` fills defaults, it does
+not validate `resolve`; use `verify` separately. Inspection and resolution
+output is not secret-redacted.
 
 ### config verify
 
@@ -118,7 +214,7 @@ yaml-cfg config skeleton base.schema.yaml -o ki.yaml
 
 ### config show / list
 
-Inspect a resolved config file:
+Inspect a single config file plus schema defaults (not all application layers):
 
 ```bash
 yaml-cfg config show llm_provider --config ki.yaml

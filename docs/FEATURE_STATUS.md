@@ -3,6 +3,12 @@
 **Last Updated:** 2026-09-05  
 **Scope:** yaml-cfg-wizard library only (not app-specific features)
 
+This is the historical September feature inventory, not a verification of the
+current extensions. See [current operation](../doc/YAML_CONFIG_SYSADMIN.md) and
+[implemented versus planned components](../doc/YAML_CONFIG_CONCEPTS.md).
+The new `editor.py` and optional `django.py` are present in the working tree;
+no full-tree UI or tested production rollout is implied.
+
 ---
 
 ## ✅ Completed Features
@@ -19,7 +25,8 @@
 **Implementation Details:**
 - `src/yaml_cfg_wizard/schema_utils.py` - Schema utilities
 - `src/yaml_cfg_wizard/core.py` - Schema validation
-- Supports JSON Schema format validation
+- Draft-7 validation in the resolver; format checking is explicitly enabled
+  by the new editor, not by the generic resolver validator.
 - Enables schema inheritance patterns
 
 **CLI Commands:**

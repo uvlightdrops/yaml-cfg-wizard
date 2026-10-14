@@ -1,11 +1,64 @@
-.venv/
+# Python
 __pycache__/
-.pytest_cache/
-*.pyc
-*.pyo
-*.egg-info/
-.DS_Store
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+kicli_venv/
+.venv*
+ENV/
 build/
+develop-eggs/
 dist/
-*.egg/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE
 .idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment and local configuration
+.env
+.env.local
+kictl.yaml
+ki.yaml
+creds.yaml
+config.yaml
+*.local.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local data
+*.sqlite
+*.sqlite3
+*.csv
+*.db
+tmp_*
+
+# Per-host configuration
+config/stages/.active_stage
+config/profiles/.active_profile
+config/runtime/
