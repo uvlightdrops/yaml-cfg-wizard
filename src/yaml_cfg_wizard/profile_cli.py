@@ -1,4 +1,9 @@
-"""CLI utilities for profile inspection and management."""
+"""CLI utilities for profile inspection and management.
+
+This module implements profile management commands. When ki-core is installed,
+commands optionally delegate to ki_core.commands for consistency across the
+ecosystem. When ki-core is not available, standalone implementations are used.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +16,30 @@ import yaml
 from .core import load_yaml_file
 
 ACTIVE_PROFILE_MARKER = ".active_profile"
+
+
+def _try_delegate_to_ki_core(command_name: str, **kwargs) -> bool:
+    """Try to delegate to ki_core.commands if available.
+    
+    Returns True if delegation succeeded, False if ki_core is not available.
+    """
+    try:
+        if command_name == "list":
+            from ki_core.commands import run_profile_list
+            run_profile_list(echo_fn=typer.echo, **kwargs)
+            return True
+        elif command_name == "set":
+            from ki_core.commands import run_profile_set
+            run_profile_set(echo_fn=typer.echo, **kwargs)
+            return True
+        elif command_name == "active":
+            from ki_core.commands import run_profile_active
+            run_profile_active(echo_fn=typer.echo, **kwargs)
+            return True
+    except ImportError:
+        # ki-core not installed, fall through to standalone implementation
+        pass
+    return False
 
 
 def _profile_files(profiles_dir: str | Path) -> list[Path]:
@@ -43,7 +72,16 @@ def read_active_profile(profiles_dir: str | Path) -> Optional[str]:
 
 
 def list_profiles(profiles_dir: str | Path) -> None:
-    """List available profiles, marking the active one."""
+    """List available profiles, marking the active one.
+    
+    If ki-core is installed, delegates to ki_core.commands.run_profile_list for consistency.
+    Otherwise, uses standalone implementation.
+    """
+    # Try ki-core delegation if available
+    if _try_delegate_to_ki_core("list", profiles_dir=str(profiles_dir)):
+        return
+    
+    # Fallback: standalone implementation
     names = _profile_names(profiles_dir)
     if not names:
         typer.echo("No profile files found.")
@@ -69,7 +107,16 @@ def show_profile(profiles_dir: str | Path, name: str) -> None:
 
 
 def set_active_profile(profiles_dir: str | Path, name: str) -> None:
-    """Mark a profile as the active one for subsequent resolves."""
+    """Mark a profile as the active one for subsequent resolves.
+    
+    If ki-core is installed, delegates to ki_core.commands.run_profile_set for consistency.
+    Otherwise, uses standalone implementation.
+    """
+    # Try ki-core delegation if available
+    if _try_delegate_to_ki_core("set", profiles_dir=str(profiles_dir), profile_name=name):
+        return
+    
+    # Fallback: standalone implementation
     directory = Path(profiles_dir)
     path = _profile_path(directory, name)
     if not path:

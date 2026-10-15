@@ -1,4 +1,9 @@
-"""CLI utilities for config inspection and management."""
+"""CLI utilities for config inspection and management.
+
+This module implements config management commands. When ki-core is installed,
+commands optionally delegate to ki_core.commands for consistency across the
+ecosystem. When ki-core is not available, standalone implementations are used.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +14,34 @@ import typer
 import yaml
 from .core import ConfigResolver
 from .schema_utils import merge_schemas
+
+
+def _try_delegate_to_ki_core(command_name: str, **kwargs) -> bool:
+    """Try to delegate to ki_core.commands if available.
+    
+    Returns True if delegation succeeded, False if ki_core is not available.
+    """
+    try:
+        if command_name == "resolve":
+            from ki_core.commands import run_resolve
+            run_resolve(echo_fn=typer.echo, **kwargs)
+            return True
+        elif command_name == "verify":
+            from ki_core.commands import run_verify
+            run_verify(echo_fn=typer.echo, **kwargs)
+            return True
+        elif command_name == "skeleton":
+            from ki_core.commands import run_skeleton
+            run_skeleton(echo_fn=typer.echo, **kwargs)
+            return True
+        elif command_name == "show":
+            from ki_core.commands import run_show
+            run_show(echo_fn=typer.echo, **kwargs)
+            return True
+    except ImportError:
+        # ki-core not installed, fall through to standalone implementation
+        pass
+    return False
 
 def show_config(
     config_dict: Dict[str, Any],

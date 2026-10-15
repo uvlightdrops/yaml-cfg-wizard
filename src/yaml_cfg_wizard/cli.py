@@ -121,7 +121,27 @@ def resolve_config(
     ),
     no_schema: bool = typer.Option(False, "--no-schema", help="Disable schema-defaults auto-discovery"),
 ) -> None:
-    """Merge and resolve all config layers (defaults -> profile -> stage -> runtime -> env)."""
+    """Merge and resolve all config layers (defaults -> profile -> stage -> runtime -> env).
+    
+    If ki-core is installed, delegates to ki_core.commands.run_resolve for consistency.
+    Otherwise, uses standalone implementation.
+    """
+    from .config_cli import _try_delegate_to_ki_core
+    
+    # Try ki-core delegation if available
+    if _try_delegate_to_ki_core(
+        "resolve",
+        defaults_dir=defaults_dir,
+        defaults=[Path(d) for d in defaults] if defaults else None,
+        profile=[Path(p) for p in profile] if profile else None,
+        stage=[Path(s) for s in stage] if stage else None,
+        runtime_file=Path(runtime_file) if runtime_file else None,
+        output_file=output,
+        env_prefix=env_prefix,
+    ):
+        return
+    
+    # Fallback: standalone implementation
     resolver = _resolve_for_cli(
         defaults_dir,
         profiles_dir,
@@ -151,7 +171,22 @@ def skeleton(
     output: str = typer.Option("ki.yaml", "--output", "-o", help="Output config file path"),
     additional: Optional[list[str]] = typer.Option(None, "--schema", help="Additional schema files to merge"),
 ) -> None:
-    """Generate config skeleton from schema."""
+    """Generate config skeleton from schema.
+    
+    If ki-core is installed, delegates to ki_core.commands.run_skeleton for consistency.
+    Otherwise, uses standalone implementation.
+    """
+    from .config_cli import _try_delegate_to_ki_core
+    
+    # Try ki-core delegation if available
+    if _try_delegate_to_ki_core(
+        "skeleton",
+        output_file=output,
+        additional_schemas=additional,
+    ):
+        return
+    
+    # Fallback: standalone implementation
     if base_schema is not None:
         schemas = [base_schema, *(additional or [])]
     else:
@@ -178,7 +213,22 @@ def show(
     ),
     no_schema: bool = typer.Option(False, "--no-schema", help="Disable schema-defaults auto-discovery"),
 ) -> None:
-    """Show config value by key."""
+    """Show config value by key.
+    
+    If ki-core is installed, delegates to ki_core.commands.run_show for consistency.
+    Otherwise, uses standalone implementation.
+    """
+    from .config_cli import _try_delegate_to_ki_core
+    
+    # Try ki-core delegation if available
+    if _try_delegate_to_ki_core(
+        "show",
+        config_file=config_file,
+        key=key,
+    ):
+        return
+    
+    # Fallback: standalone implementation
     try:
         config_dict = load_yaml_file(config_file)
         if not no_schema:

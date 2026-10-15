@@ -174,6 +174,29 @@ The `yaml-cfg` command provides subcommands organized into four groups:
 - `template` — scaffold a full config directory tree from a bundled template
 - `env` — inspect environment variable overrides
 
+### Optional ki-core integration
+
+When `ki-core` is installed in the same environment, `yaml-cfg` automatically
+delegates to `ki_core.commands` for consistency across the KI ecosystem:
+
+```bash
+# yaml-cfg config resolve → delegates to ki_core.commands.run_resolve if ki-core available
+yaml-cfg config resolve --defaults-dir defaults
+
+# yaml-cfg profile set → delegates to ki_core.commands.run_profile_set if ki-core available
+yaml-cfg profile set local
+```
+
+If `ki-core` is not installed, `yaml-cfg` works standalone using its own implementations.
+This optional integration means:
+
+- **No dependency on ki-core** — yaml-cfg remains fully independent
+- **Automatic consistency** — when both are present, same commands use shared logic
+- **Zero breaking changes** — all commands work whether ki-core is installed or not
+
+This is useful when deploying yaml-cfg alone (e.g., standalone config tool) or as part of
+the KI ecosystem (where ki-core provides orchestration and shared commands).
+
 ### config resolve
 
 Merge and resolve all config layers:
