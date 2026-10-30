@@ -138,6 +138,16 @@ to 1 MiB. The Unix advisory `.editor.lock` sidecar must be honored by other
 writers to eliminate races with external file editors. Keep the directory
 host-owned, not writable by untrusted users. Locks are intentionally persistent.
 
+Specialized trusted subclasses can reuse the same transaction through protected
+`Editor._validate_changes`, `_validate_effective_values`, and `_file_mode` hooks.
+The default editor remains scalar-only, rejects secret-named registered paths,
+and preserves existing target modes. Extensions must separately enforce their
+schema and redaction policy before supporting containers. `ki_core.runtime_settings`
+provides that higher-level policy and forces private `0600` writes.
+`ConfigResolver._runtime_layers()` is an extraction hook for replacing just the
+runtime candidate while retaining the resolver's normal defaults/profile/stage/
+environment precedence and validation; it does not change default resolution.
+
 `yaml_cfg_wizard.django.render_editor(request, editor, template_name, context)`
 supports GET and CSRF-protected POST with a host-owned HTML template. It is not
 an endpoint or authentication system: **the host must enforce active admin

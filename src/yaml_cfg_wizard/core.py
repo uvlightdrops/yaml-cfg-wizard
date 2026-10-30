@@ -143,14 +143,18 @@ class ConfigResolver:
             merged = deep_merge(merged, load_directory_yaml(self.stages_dir))
         merged = deep_merge(merged, load_yaml_files(self.stage))
 
-        if self.runtime_file:
-            merged = deep_merge(merged, load_yaml_file(self.runtime_file))
-        merged = deep_merge(merged, load_yaml_files(self.runtime))
+        for layer in self._runtime_layers():
+            merged = deep_merge(merged, layer)
 
         env_overrides = env_to_dict(self.env_prefix, self.env)
         merged = deep_merge(merged, env_overrides)
         self.validate(merged)
         return merged
+
+    def _runtime_layers(self) -> Sequence[Dict[str, Any]]:
+        """Return runtime layers without changing their merge boundaries."""
+        layers = [load_yaml_file(self.runtime_file)] if self.runtime_file else []
+        return [*layers, load_yaml_files(self.runtime)]
 
     def validate(self, data: Optional[Dict[str, Any]] = None) -> None:
         if not self.schema_file:

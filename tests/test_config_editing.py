@@ -56,6 +56,22 @@ class TestConfigEditing(unittest.TestCase):
         self.assertFalse(self.row(snapshot, "node.name")["overridden"])
         self.assertEqual(self.row(snapshot, "node.name")["effective"], "inherited")
 
+    def test_private_mode_hook_reuses_atomic_transaction(self):
+        class PrivateEditor(Editor):
+            def _file_mode(self, target, raw):
+                return 0o600
+
+        self.write("node:\n  name: old\n")
+        self.target.chmod(0o644)
+        private_editor = PrivateEditor(
+            self.editor.files, self.editor.fields, self.editor.resolve, self.editor.schema,
+        )
+        private_editor.save(
+            "runtime", private_editor.snapshot("runtime").revision, {"node.name": "private"},
+        )
+        self.assertEqual(stat.S_IMODE(self.target.stat().st_mode), 0o600)
+        self.assertEqual(yaml.safe_load(self.target.read_text())["node"]["name"], "private")
+
     def test_secret_values_never_exposed_and_unrelated_keys_preserved(self):
         self.write("secret: private\nnode:\n  password: private\n  name: old\n")
         snapshot = self.save({"node.port": 8001})

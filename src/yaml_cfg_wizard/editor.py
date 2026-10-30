@@ -191,6 +191,19 @@ class Editor:
         finally:
             os.close(fd)
 
+    def _validate_changes(self, changes: Mapping[str, Any]) -> None:
+        """Validate transport values; subclasses may support schema-safe containers."""
+        for path, value in changes.items():
+            if not isinstance(value, (str, int, float, bool, type(None))) or _unsafe_url(path, value):
+                raise ValidationError("Override must be a safe scalar value.")
+
+    def _file_mode(self, target: Path, raw: bytes | None) -> int:
+        return stat.S_IMODE(target.stat().st_mode) if raw is not None else 0o600
+
+    def _validate_effective_values(self, effective: Mapping[str, Any]) -> None:
+        if any(_unsafe_url(field.path, _get(effective, field.path)) for field in self.fields):
+            raise ValidationError("Effective configuration contains an unsafe URL.")
+
     def save(
         self, file_id: str, revision: str, changes: Mapping[str, Any],
         remove: Sequence[str] = (),
@@ -199,9 +212,7 @@ class Editor:
             raise EditorError("Field is not editable.")
         if set(changes) & set(remove):
             raise EditorError("Cannot set and remove the same override.")
-        for path, value in changes.items():
-            if not isinstance(value, (str, int, float, bool, type(None))) or _unsafe_url(path, value):
-                raise ValidationError("Override must be a safe scalar value.")
+        self._validate_changes(changes)
         target = self._target(file_id)
         temporary: str | None = None
         try:
@@ -232,8 +243,7 @@ class Editor:
                 effective = self._effective(file_id, candidate)
                 if next(self.validator.iter_errors(effective), None) is not None:
                     raise ValidationError("Effective configuration violates its schema.")
-                if any(_unsafe_url(field.path, _get(effective, field.path)) for field in self.fields):
-                    raise ValidationError("Effective configuration contains an unsafe URL.")
+                self._validate_effective_values(effective)
                 # Check unmasked overrides too, so env/creds cannot hide an
                 # invalid value that would become active after a later restart.
                 for path, value in changes.items():
@@ -249,7 +259,7 @@ class Editor:
                     raise ConflictError("Configuration changed. Reload before saving.")
                 fd, temporary = tempfile.mkstemp(prefix="." + target.name + ".", dir=target.parent)
                 with os.fdopen(fd, "wb") as stream:
-                    os.fchmod(stream.fileno(), stat.S_IMODE(target.stat().st_mode) if raw is not None else 0o600)
+                    os.fchmod(stream.fileno(), self._file_mode(target, raw))
                     stream.write(output)
                     stream.flush()
                     os.fsync(stream.fileno())

@@ -77,6 +77,31 @@ app:
         self.assertEqual(config["app"]["env"], "local")
         self.assertFalse(config["app"]["debug"])
 
+    def test_runtime_layer_hook_replaces_only_runtime(self):
+        class CandidateResolver(ConfigResolver):
+            def _runtime_layers(self):
+                return [{"app": {"env": "candidate"}}]
+
+        resolver = CandidateResolver(
+            defaults=[self.root / "defaults.yaml"],
+            profiles=[self.root / "profile.yaml"],
+            runtime=[self.root / "runtime.yaml"],
+            env={"APP_SERVER__PORT": "7000"},
+        )
+        config = resolver.resolve()
+        self.assertEqual(config["app"]["env"], "candidate")
+        self.assertTrue(config["app"]["debug"])
+        self.assertEqual(config["server"]["port"], 7000)
+
+    def test_runtime_layer_hook_preserves_type_replacement_boundary(self):
+        (self.root / "replace.yaml").write_text("app: replaced\n")
+        (self.root / "extra.yaml").write_text("app:\n  name: rebuilt\n")
+        config = ConfigResolver(
+            defaults=[self.root / "defaults.yaml"], runtime_file=self.root / "replace.yaml",
+            runtime=[self.root / "extra.yaml"], env={"IGNORED": "true"},
+        ).resolve()
+        self.assertEqual(config["app"], {"name": "rebuilt"})
+
 
 if __name__ == "__main__":
     unittest.main()
