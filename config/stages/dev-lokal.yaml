@@ -1,0 +1,3 @@
+# Local development stage for yaml-cfg-wizard
+stack:
+  target: local

@@ -1,0 +1,9 @@
+# yaml-cfg-wizard app-level configuration
+# Configuration for the YAML config wizard library
+
+yaml_cfg_wizard:
+  # Library configuration - no runtime settings needed
+  validation:
+    strict: true
+  cli:
+    enabled: true

@@ -1,0 +1,13 @@
+# Stack configuration for yaml-cfg-wizard
+# Minimal service stack for development
+# This is a library repo with no runtime services
+
+stack:
+  name: yaml-cfg-wizard
+  target: local
+  services: {}  # No services - this is a Python library
+  
+  targets:
+    k8s:
+      k8s:
+        namespace: yaml-cfg-wizard

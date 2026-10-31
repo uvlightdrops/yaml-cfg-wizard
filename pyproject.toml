@@ -26,3 +26,8 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["yaml_cfg_wizard*"]
+
+[tool.stackctl]
+# Minimal config - this is a library repo
+config_loader = "yaml_cfg_wizard:load_config"
+config_key = "stack"
