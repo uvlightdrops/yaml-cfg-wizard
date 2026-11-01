@@ -1,3 +1,13 @@
+---
+project: yaml-cfg-wizard
+agent_project: ki-ecosystem # Current updater
+purpose: YAML resolver usage
+created: null # Unknown
+first_tracked: 2026-09-03
+updated: 2026-11-01
+update_reason: Section replacement
+---
+
 # yaml_cfg_wizard
 
 A reusable YAML configuration resolver and optional CLI wizard for layered config projects.
@@ -73,6 +83,34 @@ The resolver applies config in this order:
 5. environment variables
 
 The last layer wins.
+
+### Explicit section replacement (0.3.0)
+
+The default resolver and `deep_merge` retain their ordinary merge behavior.
+Opt in with `ConfigResolver(..., replace_sections=True)` to reserve the
+`__replace__` key as a boolean control marker:
+
+```yaml
+stack:
+  __replace__: true
+  services:
+    web:
+      port: 8080
+```
+
+This drops inherited keys in `stack`, including inherited services. Later
+runtime/environment layers may still add keys. `false` keeps ordinary merging;
+non-boolean markers raise `ValueError`. Lists still replace the entire list.
+Normal resolution validates and returns a marker-free configuration.
+
+For composition with additional resolvers or schema defaults, use
+`resolve(preserve_replace_markers=True)`: validation remains marker-free, but
+the returned dictionary retains replacement metadata. Merge it using
+`merge_with_replacement`, then call `strip_replace_markers` **only after the
+last merge**. These helpers are public exports. Intermediate dictionaries are
+not effective application configurations. The opt-in loaders
+`load_yaml_files(..., replace_sections=True)` and
+`load_directory_yaml(..., replace_sections=True)` likewise retain metadata.
 
 ## Installation
 
