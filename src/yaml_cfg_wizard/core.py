@@ -21,6 +21,36 @@ def deep_merge(base: Any, override: Any) -> Any:
     return deepcopy(override)
 
 
+def merge_with_replacement(base: Any, override: Any) -> Any:
+    """Merge sections, retaining replacement metadata for subsequent merges."""
+    if isinstance(override, dict):
+        marker = override.get("__replace__", False)
+        if not isinstance(marker, bool):
+            raise ValueError("__replace__ must be a boolean")
+        result = deepcopy(base) if isinstance(base, dict) and not marker else {}
+        if marker:
+            result["__replace__"] = True
+        for key, value in override.items():
+            if key != "__replace__":
+                result[key] = merge_with_replacement(result.get(key), value)
+        return result
+    if isinstance(override, list):
+        return [merge_with_replacement(None, item) for item in override]
+    return deepcopy(override)
+
+
+def strip_replace_markers(config: Any) -> Any:
+    """Remove replacement metadata after the final merge."""
+    if isinstance(config, dict):
+        return {
+            key: strip_replace_markers(value)
+            for key, value in config.items() if key != "__replace__"
+        }
+    if isinstance(config, list):
+        return [strip_replace_markers(item) for item in config]
+    return config
+
+
 def load_yaml_file(path: str | os.PathLike[str]) -> Dict[str, Any]:
     file_path = Path(path)
     if not file_path.exists():
@@ -33,24 +63,26 @@ def load_yaml_file(path: str | os.PathLike[str]) -> Dict[str, Any]:
         return data
 
 
-def load_yaml_files(paths: Sequence[str | os.PathLike[str]]) -> Dict[str, Any]:
+def load_yaml_files(
+    paths: Sequence[str | os.PathLike[str]], *, replace_sections: bool = False,
+) -> Dict[str, Any]:
     merged: Dict[str, Any] = {}
+    merge = merge_with_replacement if replace_sections else deep_merge
     for path in paths:
         loaded = load_yaml_file(path)
-        merged = deep_merge(merged, loaded)
+        merged = merge(merged, loaded)
     return merged
 
 
-def load_directory_yaml(directory: str | os.PathLike[str]) -> Dict[str, Any]:
+def load_directory_yaml(
+    directory: str | os.PathLike[str], *, replace_sections: bool = False,
+) -> Dict[str, Any]:
     directory_path = Path(directory)
     if not directory_path.exists():
         return {}
 
-    merged: Dict[str, Any] = {}
     files = sorted(directory_path.glob("*.yaml")) + sorted(directory_path.glob("*.yml"))
-    for file_path in files:
-        merged = deep_merge(merged, load_yaml_file(file_path))
-    return merged
+    return load_yaml_files(files, replace_sections=replace_sections)
 
 
 def validate_schema(data: Dict[str, Any], schema_file: str | os.PathLike[str]) -> None:
@@ -115,6 +147,7 @@ class ConfigResolver:
         schema_file: str | os.PathLike[str] | None = None,
         env_prefix: str = "APP_",
         env: Optional[dict[str, str]] = None,
+        replace_sections: bool = False,
     ) -> None:
         self.defaults = list(defaults or [])
         self.profiles = list(profiles or [])
@@ -127,34 +160,46 @@ class ConfigResolver:
         self.schema_file = str(schema_file) if schema_file else None
         self.env_prefix = env_prefix
         self.env = env
+        self.replace_sections = replace_sections
 
-    def resolve(self) -> Dict[str, Any]:
+    def resolve(self, *, preserve_replace_markers: bool = False) -> Dict[str, Any]:
+        """Resolve and validate; optionally retain metadata for further merges."""
         merged: Dict[str, Any] = {}
+        merge = merge_with_replacement if self.replace_sections else deep_merge
+
+        def files(paths: Sequence[str | os.PathLike[str]]) -> Dict[str, Any]:
+            return load_yaml_files(paths, replace_sections=self.replace_sections)
+
+        def directory(path: str) -> Dict[str, Any]:
+            return load_directory_yaml(path, replace_sections=self.replace_sections)
 
         if self.defaults_dir:
-            merged = deep_merge(merged, load_directory_yaml(self.defaults_dir))
-        merged = deep_merge(merged, load_yaml_files(self.defaults))
+            merged = merge(merged, directory(self.defaults_dir))
+        merged = merge(merged, files(self.defaults))
 
         if self.profiles_dir:
-            merged = deep_merge(merged, load_directory_yaml(self.profiles_dir))
-        merged = deep_merge(merged, load_yaml_files(self.profiles))
+            merged = merge(merged, directory(self.profiles_dir))
+        merged = merge(merged, files(self.profiles))
 
         if self.stages_dir:
-            merged = deep_merge(merged, load_directory_yaml(self.stages_dir))
-        merged = deep_merge(merged, load_yaml_files(self.stage))
+            merged = merge(merged, directory(self.stages_dir))
+        merged = merge(merged, files(self.stage))
 
         for layer in self._runtime_layers():
-            merged = deep_merge(merged, layer)
+            merged = merge(merged, layer)
 
         env_overrides = env_to_dict(self.env_prefix, self.env)
-        merged = deep_merge(merged, env_overrides)
-        self.validate(merged)
-        return merged
+        merged = merge(merged, env_overrides)
+        effective = strip_replace_markers(merged) if self.replace_sections else merged
+        self.validate(effective)
+        return merged if preserve_replace_markers else effective
 
     def _runtime_layers(self) -> Sequence[Dict[str, Any]]:
         """Return runtime layers without changing their merge boundaries."""
         layers = [load_yaml_file(self.runtime_file)] if self.runtime_file else []
-        return [*layers, load_yaml_files(self.runtime)]
+        return [
+            *layers, load_yaml_files(self.runtime, replace_sections=self.replace_sections),
+        ]
 
     def validate(self, data: Optional[Dict[str, Any]] = None) -> None:
         if not self.schema_file:
